@@ -4,11 +4,129 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
-  moduleFormat  = "cjs"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+  DISCONTINUED
+}
+
+enum SaleStatus {
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+}
+
+model User {
+  id        String     @id @default(cuid())
+  name      String
+  email     String     @unique
+  password  String
+  role      Role       @default(EMPLOYEE)
+  status    UserStatus @default(ACTIVE)
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  sales Sale[]
+
+  @@map("users")
+}
+
+model Sale {
+  id            String         @id @default(cuid())
+  userId        String         @map("user_id")
+  total         Decimal        @db.Decimal(10, 2)
+  status        SaleStatus     @default(COMPLETED)
+  paymentMethod PaymentMethod? @map("payment_method")
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  user    User         @relation(fields: [userId], references: [id])
+  details SaleDetail[]
+
+  @@map("sales")
+}
+
+model SaleDetail {
+  id        String  @id @default(cuid())
+  saleId    String  @map("sale_id")
+  productId String  @map("product_id")
+  quantity  Int
+  unitPrice Decimal @map("unit_price") @db.Decimal(10, 2)
+  subtotal  Decimal @db.Decimal(10, 2)
+
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("sales_details")
+}
+
+model Product {
+  id            String        @id @default(cuid())
+  categoryId    String?       @map("category_id")
+  barcode       String?       @unique
+  sku           String?       @unique
+  name          String
+  brand         String?
+  description   String?
+  purchasePrice Decimal       @map("purchase_price") @db.Decimal(10, 2)
+  salePrice     Decimal       @map("sale_price") @db.Decimal(10, 2)
+  currentStock  Int           @default(0) @map("current_stock")
+  minStock      Int           @default(0) @map("min_stock")
+  status        ProductStatus @default(ACTIVE)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  category    Category?    @relation(fields: [categoryId], references: [id])
+  saleDetails SaleDetail[]
+
+  @@index([name])
+  @@index([sku])
+  @@index([barcode])
+  @@map("products")
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Supplier {
+  id           String   @id @default(cuid())
+  name         String
+  contactPhone String?  @unique @map("contact_phone")
+  email        String?  @unique
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("suppliers")
 }
